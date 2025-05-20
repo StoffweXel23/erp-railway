@@ -1,0 +1,53 @@
+# -------- docker-compose.yml --------
+version: "3.7"
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Diese Variablen trägst du gleich in Railway ein
+      SITE_NAME: "site.local"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+      MYSQL_USER: "frappe"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
+      GPT_APP_GIT: "https://github.com/DEINUSER/gpt_assistant.git"
+    command: >
+      bash -c "
+        bench new-site --no-mariadb-socket --admin-password ${ADMIN_PASSWORD} ${SITE_NAME} &&
+        bench get-app --branch version-15 erpnext &&
+        bench --site ${SITE_NAME} install-app erpnext &&
+        bench get-app ${GPT_APP_GIT} &&
+        bench --site ${SITE_NAME} install-app gpt_assistant &&
+        bench set-config -g openai_api_key ${OPENAI_API_KEY} &&
+        bench start"
+    depends_on:
+      - mariadb
+      - redis-cache
+      - redis-queue
+      - redis-socketio
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+
+  mariadb:
+    image: mariadb:10.6
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: frappe
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mariadb:/var/lib/mysql
+
+  redis-cache:
+    image: redis:7-alpine
+  redis-queue:
+    image: redis:7-alpine
+  redis-socketio:
+    image: redis:7-alpine
+
+volumes:
+  mariadb:
+  sites:
