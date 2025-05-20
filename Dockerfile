@@ -1,5 +1,6 @@
-# -------- Dockerfile --------
-FROM frappe/bench:5.19.0            # offizielles Bench-Image (Python 3.10, Node 18)
+# ERPNext / Frappe Bench image (Python 3.10, Node 18)
+FROM frappe/bench:5.19.0
+
 USER root
 
 # Install poppler-utils für PDF-OCR (später nützlich, optional)
