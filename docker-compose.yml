@@ -19,24 +19,14 @@ command: >
     echo '⏳ Warte auf MariaDB...';
     sleep 5;
 
-    if [ ! -d sites/${SITE_NAME} ]; then
-      echo '🚀 Starte Initialisierung';
-      bench new-site --no-mariadb-socket --admin-password ${ADMIN_PASSWORD} ${SITE_NAME} &&
-      echo '✅ Site erstellt' &&
-      bench get-app --branch version-15 erpnext &&
-      echo '✅ ERPNext geladen' &&
-      bench --site ${SITE_NAME} install-app erpnext &&
-      echo '✅ ERPNext installiert' &&
-      bench get-app ${GPT_APP_GIT} &&
-      echo '✅ GPT App geladen' &&
-      bench --site ${SITE_NAME} install-app gpt_assistant &&
-      echo '✅ GPT installiert' &&
-      bench set-config -g openai_api_key ${OPENAI_API_KEY} &&
-      echo '✅ Key gesetzt';
-    fi;
-
-    echo '▶ Starte Bench';
-    bench start"
+command: >
+  bash -c "
+    echo '▶ Starte Debug-Modus';
+    env &&
+    echo '✅ ENV Variablen angezeigt' &&
+    ls -alh &&
+    echo '✅ Dateien im Container angezeigt' &&
+    sleep 300"
     
     depends_on:
       - mariadb
