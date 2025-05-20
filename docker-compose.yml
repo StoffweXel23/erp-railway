@@ -6,7 +6,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      SITE_NAME: "site.local"
+      SITE_NAME: "${SITE_NAME}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
       OPENAI_API_KEY: "${OPENAI_API_KEY}"
       MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
