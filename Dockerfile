@@ -1,5 +1,5 @@
 # ERPNext / Frappe Bench image (Python 3.10, Node 18)
-FROM frappe/bench:5.19.0
+FROM frappe/bench:latest    # immer aktuell
 
 USER root
 
