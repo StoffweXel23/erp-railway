@@ -1,7 +1,7 @@
 version: "3.7"
 
 services:
-  app:
+   app:
     build: .
     ports:
       - "8000:8000"
@@ -12,22 +12,15 @@ services:
       MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
       MYSQL_USER: "frappe"
       MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
-      # 👉 DEINE echte Repository‑URL (public oder mit PAT)
       GPT_APP_GIT: "${GPT_APP_GIT}"
-command: >
-  bash -c "
-    echo '⏳ Warte auf MariaDB...';
-    sleep 5;
-
-command: >
-  bash -c "
-    echo '▶ Starte Debug-Modus';
-    env &&
-    echo '✅ ENV Variablen angezeigt' &&
-    ls -alh &&
-    echo '✅ Dateien im Container angezeigt' &&
-    sleep 300"
-    
+    command: >
+      bash -c "
+        echo '🧪 Starte Debug-Modus';
+        env;
+        echo '✅ ENV-Variablen angezeigt';
+        ls -alh;
+        echo '✅ Verzeichnisinhalt angezeigt';
+        sleep 300"
     depends_on:
       - mariadb
       - redis-cache
