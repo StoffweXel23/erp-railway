@@ -13,7 +13,7 @@ services:
       MYSQL_USER: "frappe"
       MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
       # 👉 DEINE echte Repository‑URL (public oder mit PAT)
-      GPT_APP_GIT: https://<PAT>@github.com/StoffweXel23/Buchhaltung.git
+      GPT_APP_GIT: "https://<PAT>@github.com/StoffweXel23/Buchhaltung.git"
     command: >
       bash -c "
         sleep 5;  # auf MariaDB warten
