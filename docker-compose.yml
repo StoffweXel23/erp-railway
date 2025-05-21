@@ -6,10 +6,10 @@ services:
     ports:
       - "8000:8000"
     environment:
+      MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD}"
       SITE_NAME: "${SITE_NAME}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
       OPENAI_API_KEY: "${OPENAI_API_KEY}"
-      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
       MYSQL_USER: "frappe"
       MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
       GPT_APP_GIT: "${GPT_APP_GIT}"
@@ -32,7 +32,7 @@ services:
   mariadb:
     image: mariadb:10.6
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
       MYSQL_USER: frappe
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
@@ -48,4 +48,5 @@ services:
 volumes:
   mariadb:
   sites:
+
 
