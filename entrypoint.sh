@@ -16,7 +16,7 @@ log_env() {
   # Sortiere und filtere sensible Daten
   env | sort | while IFS='=' read -r key value; do
     case "$key" in
-      *PASSWORD*|*SECRET*|*KEY*|*TOKEN*|*AUTH*|*MYSQL_URL*)
+      *PASSWORD*|*SECRET*|*KEY*|*TOKEN*|*AUTH*|*MYSQL_URL*|*REDIS_URL*)
         log "$key=*****"
         ;;
       *)
@@ -58,11 +58,11 @@ validate_config() {
   # Prüfe Redis-Konfiguration
   if [ -z "${RAILWAY_REDIS_URL}" ]; then
     # Versuche Redis-URL aus Railway-Umgebungsvariablen zu konstruieren
-    if [ -n "${REDIS_HOST}" ] && [ -n "${REDIS_PORT}" ]; then
-      export RAILWAY_REDIS_URL="redis://${REDIS_HOST}:${REDIS_PORT}"
-      log "Redis-URL aus Umgebungsvariablen konstruiert: ${RAILWAY_REDIS_URL}"
+    if [ -n "${REDIS_URL}" ]; then
+      export RAILWAY_REDIS_URL="${REDIS_URL}"
+      log "Redis-URL aus Railway-Umgebungsvariablen übernommen"
     else
-      log "FEHLER: Redis-Konfiguration nicht gefunden (weder RAILWAY_REDIS_URL noch REDIS_HOST/REDIS_PORT)"
+      log "FEHLER: Redis-Konfiguration nicht gefunden (weder RAILWAY_REDIS_URL noch REDIS_URL)"
       return 1
     fi
   fi
