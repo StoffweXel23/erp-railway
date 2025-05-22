@@ -19,7 +19,7 @@ port="${host#*:}"
 until {
     if [[ "$hostname" == "mariadb" ]]; then
         # Check MariaDB connection
-        mysql -h "$hostname" -P "$port" -u root -p"${MARIADB_ROOT_PASSWORD}" -e "SELECT 1" >/dev/null 2>&1
+        mysql -h "$hostname" -P "$port" -u root -p"${MYSQL_ROOT_PASSWORD}" -e "SELECT 1" >/dev/null 2>&1
     else
         # Check Redis connection
         redis-cli -h "$hostname" -p "$port" ping >/dev/null 2>&1
@@ -38,4 +38,6 @@ until {
 done
 
 >&2 echo "$host is ready!"
-exec $cmd 
+if [ ! -z "$cmd" ]; then
+    $cmd
+fi 
