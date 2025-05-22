@@ -70,7 +70,7 @@ bench --site "$SITE_NAME" show-config
 if [ "$PRODUCTION" = "1" ]; then
   log "Starte ERPNext mit gunicorn (Production-Modus)..."
   cd /home/frappe/frappe-bench
-  exec /home/frappe/frappe-bench/env/bin/gunicorn -b 0.0.0.0:8000 frappe.app:application --log-level debug
+  exec /home/frappe/frappe-bench/env/bin/gunicorn -b 0.0.0.0:${PORT:-8000} frappe.app:application --log-level debug
 else
   log "Starte ERPNext im Entwicklungsmodus (bench start)..."
   exec bench start
