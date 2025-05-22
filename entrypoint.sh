@@ -19,7 +19,7 @@ if [ ! -d "/home/frappe/frappe-bench/sites/$SITE_NAME" ]; then
     --db-password "$RAILWAY_MYSQL_PASSWORD" \
     --db-host "$RAILWAY_MYSQL_HOST" \
     --db-port "$RAILWAY_MYSQL_PORT" \
-    --db-user "$RAILWAY_MYSQL_USER" \
+    --db-type mysql \
     --install-app erpnext \
     --force
 
