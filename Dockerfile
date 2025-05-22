@@ -29,10 +29,12 @@ RUN chmod +x /home/frappe/wait-for-it.sh /home/frappe/entrypoint.sh
 # Switch to frappe user
 USER frappe
 # Set PATH so that bench is found
-ENV PATH="/home/frappe/.local/bin:/home/frappe/frappe-bench/env/bin:$PATH"
+ENV PATH="/home/frappe/.local/bin:/home/frappe/frappe-bench/env/bin:/usr/local/bin:$PATH"
 
-# Install the latest stable bench version
-RUN pip install --user --upgrade frappe-bench
+# Install the latest stable bench version globally
+USER root
+RUN pip install --upgrade frappe-bench
+USER frappe
 
 # Initialize frappe-bench with ERPNext v15
 RUN bench init frappe-bench --frappe-branch version-15 --skip-assets --skip-redis-config-generation \
