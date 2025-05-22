@@ -100,14 +100,15 @@ services:
     restart: always
     environment:
       SITE_NAME: ${SITE_NAME}
-      DB_HOST: mariadb
-      DB_PORT: 3306
-      DB_NAME: ${MYSQL_DATABASE}
-      DB_USER: ${MYSQL_USER}
-      DB_PASSWORD: ${MYSQL_PASSWORD}
-      REDIS_CACHE: redis-cache:6379
-      REDIS_QUEUE: redis-queue:6379
-      REDIS_SOCKETIO: redis-socketio:6379
+      MYSQL_HOST: mariadb
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      REDIS_CACHE_HOST: redis-cache
+      REDIS_QUEUE_HOST: redis-queue
+      REDIS_SOCKETIO_HOST: redis-socketio
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       PRODUCTION: "1"
     volumes:
@@ -121,7 +122,7 @@ services:
     dns:
       - 8.8.8.8
       - 8.8.4.4
-    command: ["/home/frappe/entrypoint.sh", "bench", "start"]
+    command: ["/home/frappe/entrypoint.sh"]
     depends_on:
       mariadb:
         condition: service_healthy
