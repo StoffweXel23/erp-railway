@@ -11,11 +11,17 @@ log "Umgebungsvariablen:"
 env | sort
 
 # Setze Standardwerte für Hosts, falls nicht gesetzt
-MYSQL_HOST=${MYSQL_HOST:-mariadb}
-MYSQL_PORT=${MYSQL_PORT:-3306}
+MYSQL_HOST=${DB_HOST:-mariadb}
+MYSQL_PORT=${DB_PORT:-3306}
 REDIS_CACHE_HOST=${REDIS_CACHE_HOST:-redis-cache}
 REDIS_QUEUE_HOST=${REDIS_QUEUE_HOST:-redis-queue}
 REDIS_SOCKETIO_HOST=${REDIS_SOCKETIO_HOST:-redis-socketio}
+
+# Setze Datenbank-Credentials
+MYSQL_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-${MYSQL_ROOT_PASSWORD}}
+MYSQL_DATABASE=${MYSQL_DATABASE:-erpnext}
+MYSQL_USER=${MYSQL_USER:-erpnext}
+MYSQL_PASSWORD=${MYSQL_PASSWORD:-${MYSQL_ROOT_PASSWORD}}
 
 # Healthcheck: Warte auf MariaDB
 log "Warte auf MariaDB ($MYSQL_HOST:$MYSQL_PORT)..."
@@ -36,13 +42,13 @@ log "Warte auf Redis-SocketIO ($REDIS_SOCKETIO_HOST:6379)..."
 # Site anlegen, falls nicht vorhanden
 if [ ! -d "/home/frappe/frappe-bench/sites/$SITE_NAME" ]; then
   log "Lege neue Site $SITE_NAME an..."
-  bench new-site $SITE_NAME \
-    --mariadb-root-password $MYSQL_ROOT_PASSWORD \
-    --admin-password $ADMIN_PASSWORD \
-    --db-name $MYSQL_DATABASE \
-    --db-password $MYSQL_PASSWORD \
-    --db-host $MYSQL_HOST \
-    --db-port $MYSQL_PORT \
+  bench new-site "$SITE_NAME" \
+    --mariadb-root-password "$MYSQL_ROOT_PASSWORD" \
+    --admin-password "$ADMIN_PASSWORD" \
+    --db-name "$MYSQL_DATABASE" \
+    --db-password "$MYSQL_PASSWORD" \
+    --db-host "$MYSQL_HOST" \
+    --db-port "$MYSQL_PORT" \
     --no-mariadb-socket \
     --install-app erpnext \
     --force
@@ -58,7 +64,7 @@ fi
 
 # Debug: Zeige Site-Status
 log "Site-Status:"
-bench --site $SITE_NAME show-config
+bench --site "$SITE_NAME" show-config
 
 # Production-Start
 if [ "$PRODUCTION" = "1" ]; then
