@@ -1,44 +1,151 @@
 version: "3.7"
 
 services:
-  app:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD}"
-      SITE_NAME: "${SITE_NAME}"
-      ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
-      OPENAI_API_KEY: "${OPENAI_API_KEY}"
-      GPT_APP_GIT: "${GPT_APP_GIT}"
-    command: >
-      bash -c "
-        echo '🧪 Starte Debug-Modus';
-        env;
-        echo '✅ ENV-Variablen angezeigt';
-        ls -alh;
-        echo '✅ Verzeichnisinhalt angezeigt';
-        sleep 300"
-    depends_on:
-      - mariadb
-      - redis-cache
-      - redis-queue
-      - redis-socketio
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-
   mariadb:
+    container_name: mariadb
     image: mariadb:10.6
+    restart: always
     environment:
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      erp_network:
+        aliases:
+          - mariadb
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      retries: 10
+      start_period: 30s
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
   redis-cache:
-    image: redis:7-alpine
+    container_name: redis-cache
+    image: redis:6.2-alpine
+    restart: always
+    networks:
+      erp_network:
+        aliases:
+          - redis-cache
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+      start_period: 10s
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
   redis-queue:
-    image: redis:7-alpine
+    container_name: redis-queue
+    image: redis:6.2-alpine
+    restart: always
+    networks:
+      erp_network:
+        aliases:
+          - redis-queue
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+      start_period: 10s
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
   redis-socketio:
-    image: redis:7-alpine
+    container_name: redis-socketio
+    image: redis:6.2-alpine
+    restart: always
+    networks:
+      erp_network:
+        aliases:
+          - redis-socketio
+    ports:
+      - "6381:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+      start_period: 10s
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  app:
+    container_name: app
+    build: .
+    restart: always
+    environment:
+      SITE_NAME: ${SITE_NAME}
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_CACHE: redis-cache:6379
+      REDIS_QUEUE: redis-queue:6379
+      REDIS_SOCKETIO: redis-socketio:6379
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      PRODUCTION: "1"
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    ports:
+      - "8000:8000"
+    networks:
+      erp_network:
+        aliases:
+          - app
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    command: ["/home/frappe/entrypoint.sh", "bench", "start"]
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+      redis-queue:
+        condition: service_healthy
+      redis-socketio:
+        condition: service_healthy
+
+networks:
+  erp_network:
+    driver: bridge
+    name: erp_network
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
 
 volumes:
-  mariadb:
+  mariadb_data:
   sites:
+
+
+
+
+
