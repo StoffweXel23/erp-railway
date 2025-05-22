@@ -1,143 +1,30 @@
+version: "3.7"
+
 services:
-  mariadb:
-    container_name: mariadb
-    image: mariadb:10.6
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-    volumes:
-      - mariadb_data:/var/lib/mysql
-    networks:
-      erp_network:
-        aliases:
-          - mariadb
-    ports:
-      - "${DB_PORT:-3306}:3306"
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MARIADB_ROOT_PASSWORD}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-
-  redis-cache:
-    container_name: redis-cache
-    image: redis:6.2-alpine
-    networks:
-      erp_network:
-        aliases:
-          - redis-cache
-    ports:
-      - "${REDIS_CACHE_PORT:-6379}:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-    depends_on:
-      mariadb:
-        condition: service_healthy
-
-  redis-queue:
-    container_name: redis-queue
-    image: redis:6.2-alpine
-    networks:
-      erp_network:
-        aliases:
-          - redis-queue
-    ports:
-      - "${REDIS_QUEUE_PORT:-6380}:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-    depends_on:
-      mariadb:
-        condition: service_healthy
-
-  redis-socketio:
-    container_name: redis-socketio
-    image: redis:6.2-alpine
-    networks:
-      erp_network:
-        aliases:
-          - redis-socketio
-    ports:
-      - "${REDIS_SOCKETIO_PORT:-6381}:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-    depends_on:
-      mariadb:
-        condition: service_healthy
-
   app:
     container_name: app
     build: .
-    depends_on:
-      mariadb:
-        condition: service_healthy
-      redis-cache:
-        condition: service_healthy
-      redis-queue:
-        condition: service_healthy
-      redis-socketio:
-        condition: service_healthy
+    restart: always
     environment:
-      - DB_HOST=mariadb
-      - DB_PORT=${DB_PORT:-3306}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
-      - SITE_NAME=${SITE_NAME}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - REDIS_CACHE_HOST=redis-cache
-      - REDIS_QUEUE_HOST=redis-queue
-      - REDIS_SOCKETIO_HOST=redis-socketio
+      SITE_NAME: ${SITE_NAME}
+      DB_HOST: ${RAILWAY_MYSQL_HOST}
+      DB_PORT: ${RAILWAY_MYSQL_PORT}
+      DB_NAME: ${RAILWAY_MYSQL_DATABASE}
+      DB_PASSWORD: ${RAILWAY_MYSQL_PASSWORD}
+      REDIS_CACHE: ${RAILWAY_REDIS_URL}
+      REDIS_QUEUE: ${RAILWAY_REDIS_URL}
+      REDIS_SOCKETIO: ${RAILWAY_REDIS_URL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      PRODUCTION: "1"
+      PYTHONPATH: /home/frappe/frappe-bench/apps
     volumes:
       - sites:/home/frappe/frappe-bench/sites
     ports:
-      - "${APP_PORT:-8000}:8000"
-      - "${SOCKETIO_PORT:-9000}:9000"
-    networks:
-      erp_network:
-        aliases:
-          - app
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-    command: ["/home/frappe/entrypoint.sh", "bench", "start"]
-
-networks:
-  erp_network:
-    driver: bridge
-    name: erp_network
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.20.0.0/16
+      - "8000:8000"
+      - "9000:9000"
+    command: ["/home/frappe/entrypoint.sh"]
 
 volumes:
-  mariadb_data:
   sites:
 
 
