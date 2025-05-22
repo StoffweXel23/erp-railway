@@ -1,5 +1,31 @@
 #!/bin/bash
-set -e
+
+# Aktiviere Debug-Modus
+set -x
+
+# Logging-Funktion mit Maskierung sensibler Daten
+log() {
+  local message="$1"
+  # Maskiere sensible Daten
+  message=$(echo "$message" | sed -E 's/(password|key|secret|token)=[^[:space:]]+/\1=*****/g')
+  message=$(echo "$message" | sed -E 's/([A-Za-z0-9+/]{4})[A-Za-z0-9+/]{4}([A-Za-z0-9+/]{4})/\1****\2/g')
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $message"
+}
+
+# Sichere Umgebungsvariablen-Anzeige
+log_env() {
+  log "Umgebungsvariablen:"
+  env | while IFS='=' read -r key value; do
+    case "$key" in
+      *PASSWORD*|*SECRET*|*KEY*|*TOKEN*|*AUTH*)
+        log "$key=*****"
+        ;;
+      *)
+        log "$key=$value"
+        ;;
+    esac
+  done
+}
 
 # Signal-Handler für sauberes Beenden
 cleanup() {
@@ -14,10 +40,8 @@ cleanup() {
 # Trap für Signale
 trap cleanup SIGTERM SIGINT
 
-# Logging-Funktion
-log() {
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
-}
+# Debug: Zeige Umgebungsvariablen (maskiert)
+log_env
 
 # Konfigurationsvalidierung
 validate_config() {
@@ -28,7 +52,7 @@ validate_config() {
   for var in "${required_vars[@]}"; do
     if [ -z "${!var}" ]; then
       log "FEHLER: Umgebungsvariable $var ist nicht gesetzt"
-      exit 1
+      return 1
     fi
   done
   
@@ -39,19 +63,26 @@ validate_config() {
   fi
   
   log "Konfiguration ist gültig"
+  return 0
 }
 
-# Debug: Zeige alle Umgebungsvariablen
-log "Umgebungsvariablen:"
-env | sort
-
 # Validiere Konfiguration
-validate_config
+if ! validate_config; then
+  log "FEHLER: Konfigurationsvalidierung fehlgeschlagen"
+  exit 1
+fi
 
 # MySQL-Verbindung testen
 log "Teste MySQL-Verbindung..."
-until mysql -h"${MYSQLHOST}" -P"${MYSQLPORT}" -u"${MYSQLUSER}" -p"${MYSQLPASSWORD}" -e "SELECT 1" >/dev/null 2>&1; do
-  log "Warte auf MySQL-Verfügbarkeit..."
+max_retries=30
+retry_count=0
+while ! mysql -h"${MYSQLHOST}" -P"${MYSQLPORT}" -u"${MYSQLUSER}" -p"${MYSQLPASSWORD}" -e "SELECT 1" >/dev/null 2>&1; do
+  retry_count=$((retry_count + 1))
+  if [ $retry_count -ge $max_retries ]; then
+    log "FEHLER: MySQL-Verbindung konnte nicht hergestellt werden nach $max_retries Versuchen"
+    exit 1
+  fi
+  log "Warte auf MySQL-Verfügbarkeit... (Versuch $retry_count/$max_retries)"
   sleep 2
 done
 log "MySQL-Verbindung erfolgreich hergestellt"
@@ -59,7 +90,7 @@ log "MySQL-Verbindung erfolgreich hergestellt"
 # Site anlegen oder aktualisieren
 if [ ! -d "/home/frappe/frappe-bench/sites/$SITE_NAME" ]; then
   log "Lege neue Site $SITE_NAME an..."
-  bench new-site "$SITE_NAME" \
+  if ! bench new-site "$SITE_NAME" \
     --admin-password "${ADMIN_PASSWORD}" \
     --db-name "${MYSQLDATABASE}" \
     --db-password "${MYSQLPASSWORD}" \
@@ -67,34 +98,64 @@ if [ ! -d "/home/frappe/frappe-bench/sites/$SITE_NAME" ]; then
     --db-port "${MYSQLPORT}" \
     --db-type mariadb \
     --install-app erpnext \
-    --force
+    --force; then
+    log "FEHLER: Site-Erstellung fehlgeschlagen"
+    exit 1
+  fi
 else
   log "Site $SITE_NAME existiert bereits."
 fi
 
 # Konfiguriere Site-Einstellungen
 log "Konfiguriere Site-Einstellungen..."
-bench --site "$SITE_NAME" set-config redis_cache "${RAILWAY_REDIS_URL}"
-bench --site "$SITE_NAME" set-config redis_queue "${RAILWAY_REDIS_URL}"
-bench --site "$SITE_NAME" set-config redis_socketio "${RAILWAY_REDIS_URL}"
-bench --site "$SITE_NAME" set-config webserver_port "${PORT}"
+for config in redis_cache redis_queue redis_socketio webserver_port; do
+  value=""
+  case $config in
+    redis_cache|redis_queue|redis_socketio)
+      value="${RAILWAY_REDIS_URL}"
+      ;;
+    webserver_port)
+      value="${PORT}"
+      ;;
+  esac
+  
+  if ! bench --site "$SITE_NAME" set-config "$config" "$value"; then
+    log "FEHLER: Konfiguration von $config fehlgeschlagen"
+    exit 1
+  fi
+done
 
 # Build assets nur für neue Sites
 if [ ! -d "/home/frappe/frappe-bench/sites/$SITE_NAME" ]; then
   log "Baue Assets..."
-  bench build
+  if ! bench build; then
+    log "FEHLER: Asset-Build fehlgeschlagen"
+    exit 1
+  fi
   bench clear-cache
   bench clear-website-cache
 fi
 
-# Debug: Zeige Site-Status
+# Debug: Zeige Site-Status (maskiert)
 log "Site-Status:"
-bench --site "$SITE_NAME" show-config
+bench --site "$SITE_NAME" show-config | while IFS='|' read -r key value; do
+  case "$key" in
+    *password*|*secret*|*key*|*token*|*auth*)
+      log "$key|*****"
+      ;;
+    *)
+      log "$key|$value"
+      ;;
+  esac
+done
 
 # Production-Start
 if [ "$PRODUCTION" = "1" ]; then
   log "Starte ERPNext mit gunicorn (Production-Modus) auf Port ${PORT}..."
-  cd /home/frappe/frappe-bench
+  cd /home/frappe/frappe-bench || {
+    log "FEHLER: Konnte nicht in /home/frappe/frappe-bench wechseln"
+    exit 1
+  }
   
   # Erstelle gunicorn.conf.py
   cat > gunicorn.conf.py << EOF
