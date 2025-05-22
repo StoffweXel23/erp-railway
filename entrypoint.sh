@@ -1,77 +1,59 @@
 #!/bin/bash
-set -e
 
-# Logging-Funktion
-log() {
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+# Export environment variables for wait-for-it.sh
+export MARIADB_ROOT_PASSWORD
+
+# Function to check if services are ready
+check_services() {
+    # Wait for MariaDB
+    echo "Waiting for MariaDB..."
+    /home/frappe/wait-for-it.sh mariadb:3306
+
+    # Additional wait to ensure MariaDB is fully ready
+    echo "Ensuring MariaDB is fully ready..."
+    sleep 15
+
+    # Wait for Redis services
+    echo "Waiting for Redis services..."
+    /home/frappe/wait-for-it.sh redis-cache:6379
+    /home/frappe/wait-for-it.sh redis-queue:6379
+    /home/frappe/wait-for-it.sh redis-socketio:6379
+
+    # Configure Redis settings
+    echo "Configuring Redis settings..."
+    bench set-config -g redis_cache "redis://${REDIS_CACHE_HOST}:6379"
+    bench set-config -g redis_queue "redis://${REDIS_QUEUE_HOST}:6379"
+    bench set-config -g redis_socketio "redis://${REDIS_SOCKETIO_HOST}:6379"
 }
 
-# Debug: Zeige alle Umgebungsvariablen
-log "Umgebungsvariablen:"
-env | sort
+# Create new site if it doesn't exist
+if [ ! -f "/home/frappe/frappe-bench/sites/${SITE_NAME}/site_config.json" ]; then
+    echo "Creating new site..."
+    check_services
+    bench new-site ${SITE_NAME} \
+        --mariadb-root-password ${MARIADB_ROOT_PASSWORD} \
+        --admin-password ${ADMIN_PASSWORD} \
+        --install-app erpnext \
+        --db-host mariadb \
+        --db-port 3306
 
-# Setze Standardwerte für Hosts, falls nicht gesetzt
-MYSQL_HOST=${DB_HOST:-mariadb}
-MYSQL_PORT=${DB_PORT:-3306}
-REDIS_CACHE_HOST=${REDIS_CACHE_HOST:-redis-cache}
-REDIS_QUEUE_HOST=${REDIS_QUEUE_HOST:-redis-queue}
-REDIS_SOCKETIO_HOST=${REDIS_SOCKETIO_HOST:-redis-socketio}
+    # Set as default site
+    bench use ${SITE_NAME}
 
-# Setze Datenbank-Credentials
-MYSQL_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-${MYSQL_ROOT_PASSWORD}}
-MYSQL_DATABASE=${MYSQL_DATABASE:-erpnext}
-MYSQL_USER=${MYSQL_USER:-erpnext}
-MYSQL_PASSWORD=${MYSQL_PASSWORD:-${MYSQL_ROOT_PASSWORD}}
-
-# Healthcheck: Warte auf MariaDB
-log "Warte auf MariaDB ($MYSQL_HOST:$MYSQL_PORT)..."
-/home/frappe/wait-for-it.sh "$MYSQL_HOST:$MYSQL_PORT" echo "MariaDB ist bereit."
-
-# Healthcheck: Warte auf Redis-Cache
-log "Warte auf Redis-Cache ($REDIS_CACHE_HOST:6379)..."
-/home/frappe/wait-for-it.sh "$REDIS_CACHE_HOST:6379" echo "Redis-Cache ist bereit."
-
-# Healthcheck: Warte auf Redis-Queue
-log "Warte auf Redis-Queue ($REDIS_QUEUE_HOST:6379)..."
-/home/frappe/wait-for-it.sh "$REDIS_QUEUE_HOST:6379" echo "Redis-Queue ist bereit."
-
-# Healthcheck: Warte auf Redis-SocketIO
-log "Warte auf Redis-SocketIO ($REDIS_SOCKETIO_HOST:6379)..."
-/home/frappe/wait-for-it.sh "$REDIS_SOCKETIO_HOST:6379" echo "Redis-SocketIO ist bereit."
-
-# Site anlegen, falls nicht vorhanden
-if [ ! -d "/home/frappe/frappe-bench/sites/$SITE_NAME" ]; then
-  log "Lege neue Site $SITE_NAME an..."
-  bench new-site "$SITE_NAME" \
-    --mariadb-root-password "$MYSQL_ROOT_PASSWORD" \
-    --admin-password "$ADMIN_PASSWORD" \
-    --db-name "$MYSQL_DATABASE" \
-    --db-password "$MYSQL_PASSWORD" \
-    --db-host "$MYSQL_HOST" \
-    --db-port "$MYSQL_PORT" \
-    --no-mariadb-socket \
-    --install-app erpnext \
-    --force
-
-  # Build assets
-  log "Baue Assets..."
-  bench build
-  bench clear-cache
-  bench clear-website-cache
-else
-  log "Site $SITE_NAME existiert bereits."
+    # Configure database settings
+    echo "Configuring database settings..."
+    bench set-config -g db_host mariadb
+    bench set-config -g db_port 3306
+    bench set-config -g db_name ${DB_NAME}
+    bench set-config -g db_user ${DB_USER}
+    bench set-config -g db_password ${DB_PASSWORD}
 fi
 
-# Debug: Zeige Site-Status
-log "Site-Status:"
-bench --site "$SITE_NAME" show-config
-
-# Production-Start
-if [ "$PRODUCTION" = "1" ]; then
-  log "Starte ERPNext mit gunicorn (Production-Modus)..."
-  cd /home/frappe/frappe-bench
-  exec /home/frappe/frappe-bench/env/bin/gunicorn -b 0.0.0.0:${PORT:-8000} frappe.app:application --log-level debug
+# If starting bench, ensure services are ready
+if [ "$1" = "bench" ] && [ "$2" = "start" ]; then
+    check_services
+    echo "Starting Frappe bench..."
+    exec bench start
 else
-  log "Starte ERPNext im Entwicklungsmodus (bench start)..."
-  exec bench start
+    exec "$@"
 fi 
