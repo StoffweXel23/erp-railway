@@ -29,7 +29,7 @@ RUN chmod +x /home/frappe/wait-for-it.sh /home/frappe/entrypoint.sh
 # Switch to frappe user
 USER frappe
 # Set PATH so that bench is found
-ENV PATH="/home/frappe/.local/bin:$PATH"
+ENV PATH="/home/frappe/.local/bin:/home/frappe/frappe-bench/env/bin:$PATH"
 
 # Install frappe-bench
 RUN pip install --user frappe-bench
@@ -50,7 +50,7 @@ RUN cd /home/frappe/frappe-bench/apps/frappe && \
 WORKDIR /home/frappe/frappe-bench
 
 # Production: Starte mit gunicorn
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "frappe.app:application"]
+CMD ["/home/frappe/frappe-bench/env/bin/gunicorn", "-b", "0.0.0.0:8000", "frappe.app:application"]
 
 
 
