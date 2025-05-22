@@ -47,13 +47,25 @@ validate_config() {
   log "Validiere Konfiguration..."
   
   # Prüfe erforderliche Umgebungsvariablen
-  local required_vars=("SITE_NAME" "ADMIN_PASSWORD" "MYSQLHOST" "MYSQLPORT" "MYSQLUSER" "MYSQLPASSWORD" "MYSQLDATABASE" "RAILWAY_REDIS_URL")
+  local required_vars=("SITE_NAME" "ADMIN_PASSWORD" "MYSQLHOST" "MYSQLPORT" "MYSQLUSER" "MYSQLPASSWORD" "MYSQLDATABASE")
   for var in "${required_vars[@]}"; do
     if [ -z "${!var}" ]; then
       log "FEHLER: Umgebungsvariable $var ist nicht gesetzt"
       return 1
     fi
   done
+  
+  # Prüfe Redis-Konfiguration
+  if [ -z "${RAILWAY_REDIS_URL}" ]; then
+    # Versuche Redis-URL aus Railway-Umgebungsvariablen zu konstruieren
+    if [ -n "${REDIS_HOST}" ] && [ -n "${REDIS_PORT}" ]; then
+      export RAILWAY_REDIS_URL="redis://${REDIS_HOST}:${REDIS_PORT}"
+      log "Redis-URL aus Umgebungsvariablen konstruiert: ${RAILWAY_REDIS_URL}"
+    else
+      log "FEHLER: Redis-Konfiguration nicht gefunden (weder RAILWAY_REDIS_URL noch REDIS_HOST/REDIS_PORT)"
+      return 1
+    fi
+  fi
   
   # Prüfe Port
   if [ -z "${PORT}" ]; then
