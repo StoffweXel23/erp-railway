@@ -49,8 +49,8 @@ RUN cd /home/frappe/frappe-bench/apps/frappe && \
 # Set working directory
 WORKDIR /home/frappe/frappe-bench
 
-# Production: Starte mit gunicorn
-CMD ["/home/frappe/frappe-bench/env/bin/gunicorn", "-b", "0.0.0.0:8000", "frappe.app:application"]
+# Production: Starte mit entrypoint.sh
+CMD ["/home/frappe/entrypoint.sh"]
 
 
 

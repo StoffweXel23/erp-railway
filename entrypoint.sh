@@ -48,7 +48,8 @@ fi
 # Production-Start
 if [ "$PRODUCTION" = "1" ]; then
   log "Starte ERPNext mit gunicorn (Production-Modus)..."
-  exec gunicorn -b 0.0.0.0:8000 frappe.app:application
+  cd /home/frappe/frappe-bench
+  exec /home/frappe/frappe-bench/env/bin/gunicorn -b 0.0.0.0:8000 frappe.app:application
 else
   log "Starte ERPNext im Entwicklungsmodus (bench start)..."
   exec bench start
