@@ -41,10 +41,13 @@ RUN bench init frappe-bench --frappe-branch version-15 --skip-assets --skip-redi
     && cd /home/frappe/frappe-bench && bench get-app erpnext --branch version-15 --skip-assets https://github.com/frappe/erpnext \
     && /home/frappe/frappe-bench/env/bin/pip install "redis>=4.5.5"
 
-# Update browserslist database
+# Update browserslist database and fix dependencies
 RUN cd /home/frappe/frappe-bench/apps/frappe && \
+    npm install utf-8-validate@5.0.10 && \
     npm install update-browserslist-db && \
-    npx update-browserslist-db
+    npx update-browserslist-db && \
+    cd ../erpnext && \
+    npm install utf-8-validate@5.0.10
 
 # Set working directory
 WORKDIR /home/frappe/frappe-bench
