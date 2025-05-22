@@ -4,8 +4,9 @@ services:
   mariadb:
     container_name: mariadb
     image: mariadb:10.6
+    restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
@@ -17,16 +18,16 @@ services:
         aliases:
           - mariadb
     ports:
-      - "${DB_PORT:-3306}:3306"
+      - "3306:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MARIADB_ROOT_PASSWORD}"]
       interval: 5s
-      timeout: 5s
       retries: 10
       start_period: 30s
     dns:
       - 8.8.8.8
       - 8.8.4.4
+
   redis-cache:
     container_name: redis-cache
     image: redis:6.2-alpine
