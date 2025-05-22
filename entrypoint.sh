@@ -1,26 +1,26 @@
 #!/bin/bash
 
-# Aktiviere Debug-Modus
-set -x
+# Aktiviere Debug-Modus nur für bestimmte Bereiche
+debug() {
+  echo "[DEBUG] $1" >&2
+}
 
-# Logging-Funktion mit Maskierung sensibler Daten
+# Logging-Funktion
 log() {
-  local message="$1"
-  # Maskiere sensible Daten nur einmal
-  message=$(echo "$message" | sed -E 's/(password|key|secret|token)=[^[:space:]]+/\1=*****/g')
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $message"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
 # Sichere Umgebungsvariablen-Anzeige
 log_env() {
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Umgebungsvariablen:"
-  env | while IFS='=' read -r key value; do
+  log "Umgebungsvariablen:"
+  # Sortiere und filtere sensible Daten
+  env | sort | while IFS='=' read -r key value; do
     case "$key" in
-      *PASSWORD*|*SECRET*|*KEY*|*TOKEN*|*AUTH*)
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $key=*****"
+      *PASSWORD*|*SECRET*|*KEY*|*TOKEN*|*AUTH*|*MYSQL_URL*)
+        log "$key=*****"
         ;;
       *)
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $key=$value"
+        log "$key=$value"
         ;;
     esac
   done
@@ -28,9 +28,9 @@ log_env() {
 
 # Signal-Handler für sauberes Beenden
 cleanup() {
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Container wird beendet..."
+  log "Container wird beendet..."
   if [ -n "$GUNICORN_PID" ]; then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Beende Gunicorn-Prozess..."
+    log "Beende Gunicorn-Prozess..."
     kill -TERM "$GUNICORN_PID" 2>/dev/null || true
   fi
   exit 0
@@ -44,51 +44,51 @@ log_env
 
 # Konfigurationsvalidierung
 validate_config() {
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Validiere Konfiguration..."
+  log "Validiere Konfiguration..."
   
   # Prüfe erforderliche Umgebungsvariablen
   local required_vars=("SITE_NAME" "ADMIN_PASSWORD" "MYSQLHOST" "MYSQLPORT" "MYSQLUSER" "MYSQLPASSWORD" "MYSQLDATABASE" "RAILWAY_REDIS_URL")
   for var in "${required_vars[@]}"; do
     if [ -z "${!var}" ]; then
-      echo "[$(date '+%Y-%m-%d %H:%M:%S')] FEHLER: Umgebungsvariable $var ist nicht gesetzt"
+      log "FEHLER: Umgebungsvariable $var ist nicht gesetzt"
       return 1
     fi
   done
   
   # Prüfe Port
   if [ -z "${PORT}" ]; then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNUNG: PORT nicht gesetzt, verwende Standardport 8000"
+    log "WARNUNG: PORT nicht gesetzt, verwende Standardport 8000"
     export PORT=8000
   fi
   
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Konfiguration ist gültig"
+  log "Konfiguration ist gültig"
   return 0
 }
 
 # Validiere Konfiguration
 if ! validate_config; then
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] FEHLER: Konfigurationsvalidierung fehlgeschlagen"
+  log "FEHLER: Konfigurationsvalidierung fehlgeschlagen"
   exit 1
 fi
 
 # MySQL-Verbindung testen
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Teste MySQL-Verbindung..."
+log "Teste MySQL-Verbindung..."
 max_retries=30
 retry_count=0
 while ! mysql -h"${MYSQLHOST}" -P"${MYSQLPORT}" -u"${MYSQLUSER}" -p"${MYSQLPASSWORD}" -e "SELECT 1" >/dev/null 2>&1; do
   retry_count=$((retry_count + 1))
   if [ $retry_count -ge $max_retries ]; then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] FEHLER: MySQL-Verbindung konnte nicht hergestellt werden nach $max_retries Versuchen"
+    log "FEHLER: MySQL-Verbindung konnte nicht hergestellt werden nach $max_retries Versuchen"
     exit 1
   fi
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Warte auf MySQL-Verfügbarkeit... (Versuch $retry_count/$max_retries)"
+  log "Warte auf MySQL-Verfügbarkeit... (Versuch $retry_count/$max_retries)"
   sleep 2
 done
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] MySQL-Verbindung erfolgreich hergestellt"
+log "MySQL-Verbindung erfolgreich hergestellt"
 
 # Site anlegen oder aktualisieren
 if [ ! -d "/home/frappe/frappe-bench/sites/$SITE_NAME" ]; then
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Lege neue Site $SITE_NAME an..."
+  log "Lege neue Site $SITE_NAME an..."
   if ! bench new-site "$SITE_NAME" \
     --admin-password "${ADMIN_PASSWORD}" \
     --db-name "${MYSQLDATABASE}" \
@@ -97,16 +97,17 @@ if [ ! -d "/home/frappe/frappe-bench/sites/$SITE_NAME" ]; then
     --db-port "${MYSQLPORT}" \
     --db-type mariadb \
     --install-app erpnext \
-    --force; then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] FEHLER: Site-Erstellung fehlgeschlagen"
+    --force 2>&1 | tee /tmp/site_creation.log; then
+    log "FEHLER: Site-Erstellung fehlgeschlagen. Log:"
+    cat /tmp/site_creation.log
     exit 1
   fi
 else
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Site $SITE_NAME existiert bereits."
+  log "Site $SITE_NAME existiert bereits."
 fi
 
 # Konfiguriere Site-Einstellungen
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Konfiguriere Site-Einstellungen..."
+log "Konfiguriere Site-Einstellungen..."
 for config in redis_cache redis_queue redis_socketio webserver_port; do
   value=""
   case $config in
@@ -118,17 +119,19 @@ for config in redis_cache redis_queue redis_socketio webserver_port; do
       ;;
   esac
   
-  if ! bench --site "$SITE_NAME" set-config "$config" "$value"; then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] FEHLER: Konfiguration von $config fehlgeschlagen"
+  if ! bench --site "$SITE_NAME" set-config "$config" "$value" 2>&1 | tee -a /tmp/site_config.log; then
+    log "FEHLER: Konfiguration von $config fehlgeschlagen. Log:"
+    cat /tmp/site_config.log
     exit 1
   fi
 done
 
 # Build assets nur für neue Sites
 if [ ! -d "/home/frappe/frappe-bench/sites/$SITE_NAME" ]; then
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Baue Assets..."
-  if ! bench build; then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] FEHLER: Asset-Build fehlgeschlagen"
+  log "Baue Assets..."
+  if ! bench build 2>&1 | tee /tmp/build.log; then
+    log "FEHLER: Asset-Build fehlgeschlagen. Log:"
+    cat /tmp/build.log
     exit 1
   fi
   bench clear-cache
@@ -136,23 +139,23 @@ if [ ! -d "/home/frappe/frappe-bench/sites/$SITE_NAME" ]; then
 fi
 
 # Debug: Zeige Site-Status (maskiert)
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Site-Status:"
+log "Site-Status:"
 bench --site "$SITE_NAME" show-config | while IFS='|' read -r key value; do
   case "$key" in
     *password*|*secret*|*key*|*token*|*auth*)
-      echo "[$(date '+%Y-%m-%d %H:%M:%S')] $key|*****"
+      log "$key|*****"
       ;;
     *)
-      echo "[$(date '+%Y-%m-%d %H:%M:%S')] $key|$value"
+      log "$key|$value"
       ;;
   esac
 done
 
 # Production-Start
 if [ "$PRODUCTION" = "1" ]; then
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starte ERPNext mit gunicorn (Production-Modus) auf Port ${PORT}..."
+  log "Starte ERPNext mit gunicorn (Production-Modus) auf Port ${PORT}..."
   cd /home/frappe/frappe-bench || {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] FEHLER: Konnte nicht in /home/frappe/frappe-bench wechseln"
+    log "FEHLER: Konnte nicht in /home/frappe/frappe-bench wechseln"
     exit 1
   }
   
@@ -222,12 +225,19 @@ def worker_exit(server, worker):
 EOF
 
   # Starte Gunicorn im Hintergrund und speichere PID
-  /home/frappe/frappe-bench/env/bin/gunicorn -c gunicorn.conf.py frappe.app:application &
+  /home/frappe/frappe-bench/env/bin/gunicorn -c gunicorn.conf.py frappe.app:application 2>&1 | tee /tmp/gunicorn.log &
   GUNICORN_PID=$!
 
   # Warte auf Gunicorn-Prozess
   wait $GUNICORN_PID
+  GUNICORN_EXIT_CODE=$?
+  
+  if [ $GUNICORN_EXIT_CODE -ne 0 ]; then
+    log "FEHLER: Gunicorn beendet mit Code $GUNICORN_EXIT_CODE. Log:"
+    cat /tmp/gunicorn.log
+    exit 1
+  fi
 else
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starte ERPNext im Entwicklungsmodus (bench start)..."
+  log "Starte ERPNext im Entwicklungsmodus (bench start)..."
   exec bench start
 fi 
