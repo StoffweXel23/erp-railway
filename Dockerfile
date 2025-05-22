@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     redis-tools \
-    mariadb-client \
+    default-mysql-client \
     netcat-traditional \
     nodejs \
     npm \

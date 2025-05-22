@@ -10,27 +10,24 @@ log() {
 log "Umgebungsvariablen:"
 env | sort
 
-# Setze Standardwerte für Datenbank-Port
-DB_PORT=${RAILWAY_MYSQL_PORT:-3306}
-
 # Site anlegen, falls nicht vorhanden
 if [ ! -d "/home/frappe/frappe-bench/sites/$SITE_NAME" ]; then
   log "Lege neue Site $SITE_NAME an..."
   bench new-site "$SITE_NAME" \
-    --admin-password '${ADMIN_PASSWORD}' \
-    --db-name "$RAILWAY_MYSQL_DATABASE" \
-    --db-password "$RAILWAY_MYSQL_PASSWORD" \
-    --db-host "$RAILWAY_MYSQL_HOST" \
-    --db-port "$DB_PORT" \
-    --db-type mysql \
+    --admin-password "${ADMIN_PASSWORD}" \
+    --db-name "${MYSQLDATABASE}" \
+    --db-password "${MYSQLPASSWORD}" \
+    --db-host "${MYSQLHOST}" \
+    --db-port "${MYSQLPORT}" \
+    --db-type mariadb \
     --install-app erpnext \
     --force
 
   # Konfiguriere Redis-Einstellungen
   log "Konfiguriere Redis-Einstellungen..."
-  bench --site "$SITE_NAME" set-config redis_cache "$RAILWAY_REDIS_URL"
-  bench --site "$SITE_NAME" set-config redis_queue "$RAILWAY_REDIS_URL"
-  bench --site "$SITE_NAME" set-config redis_socketio "$RAILWAY_REDIS_URL"
+  bench --site "$SITE_NAME" set-config redis_cache "${RAILWAY_REDIS_URL}"
+  bench --site "$SITE_NAME" set-config redis_queue "${RAILWAY_REDIS_URL}"
+  bench --site "$SITE_NAME" set-config redis_socketio "${RAILWAY_REDIS_URL}"
 
   # Build assets
   log "Baue Assets..."
@@ -42,9 +39,9 @@ else
   
   # Aktualisiere Redis-Einstellungen
   log "Aktualisiere Redis-Einstellungen..."
-  bench --site "$SITE_NAME" set-config redis_cache "$RAILWAY_REDIS_URL"
-  bench --site "$SITE_NAME" set-config redis_queue "$RAILWAY_REDIS_URL"
-  bench --site "$SITE_NAME" set-config redis_socketio "$RAILWAY_REDIS_URL"
+  bench --site "$SITE_NAME" set-config redis_cache "${RAILWAY_REDIS_URL}"
+  bench --site "$SITE_NAME" set-config redis_queue "${RAILWAY_REDIS_URL}"
+  bench --site "$SITE_NAME" set-config redis_socketio "${RAILWAY_REDIS_URL}"
 fi
 
 # Debug: Zeige Site-Status

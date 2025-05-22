@@ -17,9 +17,9 @@ hostname="${host%:*}"
 port="${host#*:}"
 
 until {
-    if [[ "$hostname" == "$RAILWAY_MYSQL_HOST" ]]; then
+    if [[ "$hostname" == "$MYSQLHOST" ]]; then
         # Check MySQL connection using Railway credentials
-        mysql -h "$RAILWAY_MYSQL_HOST" -P "$RAILWAY_MYSQL_PORT" -u "$RAILWAY_MYSQL_USER" -p"$RAILWAY_MYSQL_PASSWORD" -e "SELECT 1" >/dev/null 2>&1
+        mysql -h "$MYSQLHOST" -P "$MYSQLPORT" -u "$MYSQLUSER" -p"$MYSQLPASSWORD" -e "SELECT 1" >/dev/null 2>&1
     else
         # Check Redis connection
         redis-cli -h "$hostname" -p "$port" ping >/dev/null 2>&1
