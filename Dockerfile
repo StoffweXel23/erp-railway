@@ -37,6 +37,7 @@ RUN pip install --user frappe-bench
 # Initialize frappe-bench
 RUN bench init frappe-bench --frappe-branch version-15 --skip-assets --skip-redis-config-generation \
     && /home/frappe/frappe-bench/env/bin/pip install "redis>=4.5.5" \
+    && /home/frappe/frappe-bench/env/bin/pip install gunicorn \
     && cd /home/frappe/frappe-bench && bench get-app erpnext --branch version-15 --skip-assets https://github.com/frappe/erpnext \
     && /home/frappe/frappe-bench/env/bin/pip install "redis>=4.5.5"
 
