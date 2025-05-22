@@ -107,7 +107,9 @@ if [ ! -d "/home/frappe/frappe-bench/sites/$SITE_NAME" ]; then
     --db-password "${MYSQLPASSWORD}" \
     --db-host "${MYSQLHOST}" \
     --db-port "${MYSQLPORT}" \
-    --db-type mariadb \
+    --db-type mysql \
+    --db-root-username "${MYSQLUSER}" \
+    --db-root-password "${MYSQLPASSWORD}" \
     --install-app erpnext \
     --force 2>&1 | tee /tmp/site_creation.log; then
     log "FEHLER: Site-Erstellung fehlgeschlagen. Log:"
@@ -215,7 +217,7 @@ def on_reload(server):
     pass
 
 def when_ready(server):
-    pass
+    server.log.info("Gunicorn ist bereit und hört auf Port %s", server.address[1])
 
 def post_fork(server, worker):
     server.log.info("Worker spawned (pid: %s)", worker.pid)
@@ -240,6 +242,22 @@ EOF
   /home/frappe/frappe-bench/env/bin/gunicorn -c gunicorn.conf.py frappe.app:application 2>&1 | tee /tmp/gunicorn.log &
   GUNICORN_PID=$!
 
+  # Warte kurz und prüfe, ob Gunicorn läuft
+  sleep 5
+  if ! ps -p $GUNICORN_PID > /dev/null; then
+    log "FEHLER: Gunicorn-Prozess ist nicht gestartet. Log:"
+    cat /tmp/gunicorn.log
+    exit 1
+  fi
+
+  # Prüfe, ob der Port erreichbar ist
+  if ! nc -z localhost ${PORT}; then
+    log "FEHLER: Port ${PORT} ist nicht erreichbar"
+    exit 1
+  fi
+
+  log "Gunicorn läuft auf Port ${PORT} (PID: $GUNICORN_PID)"
+  
   # Warte auf Gunicorn-Prozess
   wait $GUNICORN_PID
   GUNICORN_EXIT_CODE=$?
