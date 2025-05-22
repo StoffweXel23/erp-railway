@@ -6,10 +6,10 @@ services:
     image: mariadb:10.6
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes:
       - mariadb_data:/var/lib/mysql
@@ -20,7 +20,7 @@ services:
     ports:
       - "3306:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MARIADB_ROOT_PASSWORD}"]
       interval: 5s
       retries: 10
       start_period: 30s
@@ -100,21 +100,23 @@ services:
     restart: always
     environment:
       SITE_NAME: ${SITE_NAME}
-      MYSQL_HOST: mariadb
-      MYSQL_PORT: 3306
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
       REDIS_CACHE_HOST: redis-cache
       REDIS_QUEUE_HOST: redis-queue
       REDIS_SOCKETIO_HOST: redis-socketio
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       PRODUCTION: "1"
+      PYTHONPATH: /home/frappe/frappe-bench/apps
     volumes:
       - sites:/home/frappe/frappe-bench/sites
     ports:
       - "8000:8000"
+      - "9000:9000"
     networks:
       erp_network:
         aliases:
