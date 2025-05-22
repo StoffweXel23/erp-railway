@@ -31,10 +31,10 @@ USER frappe
 # Set PATH so that bench is found
 ENV PATH="/home/frappe/.local/bin:/home/frappe/frappe-bench/env/bin:$PATH"
 
-# Install frappe-bench
-RUN pip install --user frappe-bench
+# Install the latest stable bench version
+RUN pip install --user --upgrade frappe-bench
 
-# Initialize frappe-bench
+# Initialize frappe-bench with ERPNext v15
 RUN bench init frappe-bench --frappe-branch version-15 --skip-assets --skip-redis-config-generation \
     && /home/frappe/frappe-bench/env/bin/pip install "redis>=4.5.5" \
     && /home/frappe/frappe-bench/env/bin/pip install gunicorn \
