@@ -10,6 +10,9 @@ log() {
 log "Umgebungsvariablen:"
 env | sort
 
+# Setze Standardwerte für Datenbank-Port
+DB_PORT=${RAILWAY_MYSQL_PORT:-3306}
+
 # Site anlegen, falls nicht vorhanden
 if [ ! -d "/home/frappe/frappe-bench/sites/$SITE_NAME" ]; then
   log "Lege neue Site $SITE_NAME an..."
@@ -18,7 +21,7 @@ if [ ! -d "/home/frappe/frappe-bench/sites/$SITE_NAME" ]; then
     --db-name "$RAILWAY_MYSQL_DATABASE" \
     --db-password "$RAILWAY_MYSQL_PASSWORD" \
     --db-host "$RAILWAY_MYSQL_HOST" \
-    --db-port "$RAILWAY_MYSQL_PORT" \
+    --db-port "$DB_PORT" \
     --db-type mysql \
     --install-app erpnext \
     --force
