@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Zeige Bench-Version und Optionen für Debugging
+bench --version
+which bench
+bench new-site --help
+
 # Aktiviere Debug-Modus nur für bestimmte Bereiche
 debug() {
   echo "[DEBUG] $1" >&2
@@ -107,7 +112,7 @@ if [ ! -d "/home/frappe/frappe-bench/sites/$SITE_NAME" ]; then
     --db-password "${MYSQLPASSWORD}" \
     --db-host "${MYSQLHOST}" \
     --db-port "${MYSQLPORT}" \
-    --db-type mysql \
+    --db-type mariadb \
     --db-root-username "${MYSQLUSER}" \
     --db-root-password "${MYSQLPASSWORD}" \
     --install-app erpnext \
