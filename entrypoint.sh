@@ -73,8 +73,8 @@ validate_config() {
   fi
   
   # Prüfe Port
-  if [ -z "${PORT}" ]; then
-    log "WARNUNG: PORT nicht gesetzt, verwende Standardport 8000"
+  if [ -z "${PORT}" ] || [ "${PORT}" = "3306" ]; then
+    log "WARNUNG: PORT nicht gesetzt oder auf 3306 (MySQL) gesetzt, verwende Standardport 8000"
     export PORT=8000
   fi
   
@@ -275,4 +275,8 @@ EOF
 else
   log "Starte ERPNext im Entwicklungsmodus (bench start)..."
   exec bench start
-fi 
+fi
+
+python -c "import frappe.app; print(frappe.app)"
+
+ls /home/frappe/frappe-bench/sites/ 
