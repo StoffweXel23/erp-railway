@@ -222,7 +222,7 @@ def on_reload(server):
     pass
 
 def when_ready(server):
-    server.log.info("Gunicorn ist bereit und hört auf Port %s", server.address[1])
+    server.log.info("Gunicorn ist bereit und hört auf Adresse %s", str(server.address))
 
 def post_fork(server, worker):
     server.log.info("Worker spawned (pid: %s)", worker.pid)

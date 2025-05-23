@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     cron \
     dnsutils \
     iputils-ping \
+    procps \
     && rm -rf /var/lib/apt/lists/* \
     && npm install -g yarn
 
