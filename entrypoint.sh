@@ -170,6 +170,12 @@ bench --site "$SITE_NAME" show-config | while IFS='|' read -r key value; do
   esac
 done
 
+# Füge Railway-URL als Domain zur Site hinzu
+if [ -n "$RAILWAY_PUBLIC_DOMAIN" ]; then
+  log "Füge Railway-URL als Domain zur Site hinzu: $RAILWAY_PUBLIC_DOMAIN"
+  bench --site "$SITE_NAME" add-domain "$RAILWAY_PUBLIC_DOMAIN"
+fi
+
 # Production-Start
 if [ "$PRODUCTION" = "1" ]; then
   log "Starte ERPNext mit gunicorn (Production-Modus) auf Port ${PORT}..."
